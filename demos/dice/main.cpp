@@ -22,7 +22,7 @@ void Motion( int x, int y );
 void CreateWindow( const char* title )
 {
     glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
-    glutInitWindowSize( 640, 320 );
+    glutInitWindowSize( 800, 600 );
     glutInitWindowPosition( 0, 0 );
     glutCreateWindow( title );
 }
