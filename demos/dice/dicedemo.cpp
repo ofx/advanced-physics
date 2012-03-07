@@ -26,9 +26,38 @@ public:
         this->m_RoundingSphere->body = new cyclone::RigidBody();
     }
 
-    ~Dice( void )
+    virtual ~Dice( void )
     {
         delete this->body;
+
+        delete this->m_RoundingSphere;
+    }
+
+    virtual void render( void ) = 0;
+
+    virtual void Update( cyclone::real duration ) = 0;
+    virtual void DoCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData ) = 0;
+    virtual void SetState( cyclone::real x, cyclone::real y, cyclone::real z ) = 0;
+};
+
+class SixSidedDice : public Dice
+{
+private:
+    cyclone::CollisionSphere *m_RoundingSphere;
+public:
+    SixSidedDice( void )
+    {
+        this->body = new cyclone::RigidBody;
+
+        this->m_RoundingSphere = new cyclone::CollisionSphere();
+        this->m_RoundingSphere->body = new cyclone::RigidBody();
+    }
+
+    ~SixSidedDice( void )
+    {
+        delete this->body;
+
+        delete this->m_RoundingSphere;
     }
 
     void render( void )
@@ -129,7 +158,7 @@ public:
 
 DiceDemo::DiceDemo( void )
 {
-    this->m_Dice = new Dice();
+    this->m_Dice = new SixSidedDice();
     this->m_Dice->SetState( 0.0, 10.0, 20.0 );
 }
 
