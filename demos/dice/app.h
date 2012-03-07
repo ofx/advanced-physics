@@ -26,21 +26,6 @@ public:
     void RenderText( float x, float y, const char *text, void* font = 0 );
 };
 
-class MassAggregateApplication : public Application
-{
-protected:
-    cyclone::ParticleWorld m_World;
-    cyclone::Particle *m_ParticleArray;
-    cyclone::GroundContacts m_GroundContactGenerator;
-public:
-    MassAggregateApplication( unsigned int particleCount );
-    virtual ~MassAggregateApplication( void );
-    
-    virtual void Update( void );
-    virtual void InitGraphics( void );
-    virtual void Display( void );
-};
-
 class RigidBodyApplication : public Application
 {
 protected:
@@ -66,7 +51,7 @@ protected:
     
     virtual void Reset( void ) = 0;
 public:
-    RigidBodyApplication();
+    RigidBodyApplication( void );
     
     virtual void Display( void );
     virtual void Update( void );

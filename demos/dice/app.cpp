@@ -104,47 +104,6 @@ void Application::RenderText( float x, float y, const char *text, void *font )
     glEnable( GL_DEPTH_TEST );
 }
 
-
-MassAggregateApplication::MassAggregateApplication( unsigned int particleCount ) : m_World( particleCount * 10 )
-{
-
-}
-
-MassAggregateApplication::~MassAggregateApplication()
-{
-
-}
-
-void MassAggregateApplication::InitGraphics( void )
-{
-    Application::InitGraphics();
-}
-
-void MassAggregateApplication::Display( void )
-{
-
-}
-
-void MassAggregateApplication::Update( void )
-{
-    this->m_World.startFrame();
-
-#ifndef _WIN32
-    float duration = (float)TimingData::get().LastFrameDuration * 0.001f;
-#else
-	float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
-#endif
-
-	if( duration <= 0.0f ) 
-    {
-        return;
-    }
-        
-    this->m_World.runPhysics( duration );
-    
-    Application::Update();
-}
-
 RigidBodyApplication::RigidBodyApplication( void ) : m_Theta( 0.0f ), m_Phi( 15.0f ), m_Resolver( s_MaxContacts * 8 ), m_RenderDebugInfo( false ), m_PauseSimulation( true ), m_AutoPauseSimulation( false )
 {
 

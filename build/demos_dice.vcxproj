@@ -16,7 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\demos\dice\app.cpp" />
-    <ClCompile Include="..\demos\dice\hangman.cpp" />
+    <ClCompile Include="..\demos\dice\dicedemo.cpp" />
     <ClCompile Include="..\demos\dice\main.cpp" />
     <ClCompile Include="..\demos\dice\timing.cpp" />
   </ItemGroup>
