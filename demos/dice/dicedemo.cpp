@@ -9,14 +9,21 @@
 #include <stdio.h>
 #include <cassert>
 
+#define DICE_ROUNDING_FACTOR 0.75
+
 Application* getApplication( void );
 
 class Dice : public cyclone::CollisionBox
 {
+private:
+    cyclone::CollisionSphere *m_RoundingSphere;
 public:
     Dice( void )
     {
         this->body = new cyclone::RigidBody;
+
+        this->m_RoundingSphere = new cyclone::CollisionSphere();
+        this->m_RoundingSphere->body = new cyclone::RigidBody();
     }
 
     ~Dice( void )
@@ -33,6 +40,7 @@ public:
             glMultMatrixf( mat );
             glScalef( halfSize.x * 2, halfSize.y * 2, halfSize.z * 2 );
             glutSolidCube( 1.0 );
+            glutWireSphere( this->m_RoundingSphere->radius, 30, 30 );
         glPopMatrix();
     }
 
@@ -40,32 +48,52 @@ public:
     {
         this->body->integrate( duration );
         this->calculateInternals();
+
+        // Update the rounding sphere position
+        this->m_RoundingSphere->body->setPosition( this->body->getPosition() );
+    }
+
+    void DoCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData )
+    {
+        if( cyclone::IntersectionTests::boxAndHalfSpace( *this, plane ) && cyclone::IntersectionTests::sphereAndHalfSpace( *this->m_RoundingSphere, plane ) )
+        {
+            cyclone::CollisionDetector::boxAndHalfSpace( *this, plane, collisionData );
+        }
     }
 
     void SetState( cyclone::real x, cyclone::real y, cyclone::real z )
     {
-        this->body->setPosition( x, y, z );
-        this->body->setOrientation( 1, 0, 0, 0 );
-        this->body->setVelocity( 0, 0, 0 );
-        this->body->setRotation( cyclone::Vector3( 0, 0, 0 ) );
-        this->halfSize = cyclone::Vector3( 1, 1, 1 );
+        // Dice body
+        {
+            this->body->setPosition( x, y, z );
+            this->body->setOrientation( 1, 0, 0, 0 );
+            this->body->setVelocity( 0, 0, 0 );
+            this->body->setRotation( cyclone::Vector3( 0, 0, 0 ) );
+            this->halfSize = cyclone::Vector3( 1, 1, 1 );
 
-        cyclone::real mass = this->halfSize.x * this->halfSize.y * this->halfSize.z * 8.0f;
-        this->body->setMass( mass );
+            assert( this->halfSize.x == this->halfSize.y && this->halfSize.y == this->halfSize.z );
 
-        cyclone::Matrix3 tensor;
-        tensor.setBlockInertiaTensor( this->halfSize, mass );
-        this->body->setInertiaTensor( tensor );
+            cyclone::real mass = this->halfSize.x * this->halfSize.y * this->halfSize.z * 8.0f;
+            this->body->setMass( mass );
 
-        this->body->setLinearDamping( 0.95 );
-        this->body->setAngularDamping( 0.8 );
-        this->body->clearAccumulators();
-        this->body->setAcceleration( 0, -10.0, 0 );
+            cyclone::Matrix3 tensor;
+            tensor.setBlockInertiaTensor( this->halfSize, mass );
+            this->body->setInertiaTensor( tensor );
 
-        //this->body->setCanSleep( false );
-        this->body->setAwake();
+            this->body->setLinearDamping( 0.95 );
+            this->body->setAngularDamping( 0.8 );
+            this->body->clearAccumulators();
+            this->body->setAcceleration( 0, -10.0, 0 );
 
-        this->body->calculateDerivedData();
+            this->body->setAwake();
+
+            this->body->calculateDerivedData();
+        }
+
+        // Rounding sphere body
+        {
+            this->m_RoundingSphere->radius = this->halfSize.x *= DICE_ROUNDING_FACTOR;
+        }
     }
 };
 
@@ -180,7 +208,7 @@ void DiceDemo::GenerateContacts( void )
     this->m_CollisionData.restitution = (cyclone::real) 0.1;
     this->m_CollisionData.tolerance = (cyclone::real) 0.1;
 
-    cyclone::CollisionDetector::boxAndHalfSpace( *this->m_Dice, plane, &this->m_CollisionData );
+    this->m_Dice->DoCollisionTest( plane, &this->m_CollisionData );
 }
 
 void DiceDemo::UpdateObjects( cyclone::real duration )
