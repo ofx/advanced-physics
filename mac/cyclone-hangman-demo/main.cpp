@@ -1,4 +1,8 @@
+#ifdef __APPLE__
 #include <GLUT/glut.h>
+#else
+#include <gl/glut.h>
+#endif
 
 #include "app.h"
 #include "timing.h"

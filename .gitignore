@@ -15,3 +15,5 @@
 build/advanced_physics.vcxproj.user
 *.sdf
 [Dd]ebug*/
+/lib/cyclone.lib
+/lib/cyclone_d.lib
