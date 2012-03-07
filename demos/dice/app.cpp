@@ -10,19 +10,29 @@
 
 void Application::InitGraphics( void )
 {
-    // Init graphics code
+    glClearColor( 0.9f, 0.95f, 1.0f, 1.0f );
+    glEnable( GL_DEPTH_TEST );
+    glShadeModel( GL_SMOOTH );
     
     this->SetView();
 }
 
 void Application::SetView( void )
 {
-    // Set view code
+    glMatrixMode( GL_PROJECTION );
+    glLoadIdentity();
+    gluPerspective( 60.0, (double) this->m_Width / (double) this->m_Height, 1.0, 500.0 );
+    glMatrixMode( GL_MODELVIEW );
 }
 
 void Application::Display( void )
 {
-    // Display code
+    glClear( GL_COLOR_BUFFER_BIT );
+    
+    glBegin( GL_LINES );
+        glVertex2i( 1, 1 );
+        glVertex2i( 639, 319 );
+    glEnd();
 }
 
 const char* Application::GetTitle()
@@ -42,7 +52,6 @@ void Application::Update( void )
 void Application::Key( unsigned char key )
 {
 }
-
 
 void Application::Resize( int width, int height )
 {
@@ -104,9 +113,9 @@ void Application::RenderText( float x, float y, const char *text, void *font )
     glEnable( GL_DEPTH_TEST );
 }
 
-RigidBodyApplication::RigidBodyApplication( void ) : m_Theta( 0.0f ), m_Phi( 15.0f ), m_Resolver( s_MaxContacts * 8 ), m_RenderDebugInfo( false ), m_PauseSimulation( true ), m_AutoPauseSimulation( false )
+RigidBodyApplication::RigidBodyApplication( void ) : m_Theta( 0.0f ), m_Phi( 15.0f ), m_Resolver( s_MaxContacts * 8 ), m_RenderDebugInfo( false ), m_PauseSimulation( false ), m_AutoPauseSimulation( false )
 {
-
+    this->m_CollisionData.contactArray = this->m_Contacts;
 }
 
 void RigidBodyApplication::Update( void )
@@ -147,7 +156,12 @@ void RigidBodyApplication::Update( void )
 
 void RigidBodyApplication::Display( void )
 {
-    // Display code
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    glLoadIdentity();
+    gluLookAt( 18.0f, 0, 0,  0, 0, 0,  0, 1.0f, 0 );
+    glRotatef( -this->m_Phi, 0, 0, 1 );
+    glRotatef( this->m_Theta, 0, 1, 0 );
+    glTranslatef( 0, -5.0f, 0 );
 }
 
 void RigidBodyApplication::DrawDebug( void )
@@ -207,7 +221,28 @@ void RigidBodyApplication::MouseDrag( int x, int y )
 
 void RigidBodyApplication::Key( unsigned char key )
 {
-    // Key code
+    switch( key )
+    {
+        case 'R': case 'r':
+            // Reset the simulation
+            this->Reset();
+            return;
+            
+        case 'C': case 'c':
+            // Toggle rendering of contacts
+            this->m_RenderDebugInfo = !this->m_RenderDebugInfo;
+            return;
+            
+        case 'P': case 'p':
+            // Toggle running the simulation
+            this->m_PauseSimulation = !this->m_PauseSimulation;
+            return;
+            
+        case ' ':
+            // Advance one frame
+            this->m_AutoPauseSimulation = true;
+            this->m_PauseSimulation = false;
+    }
     
     Application::Key( key );
 }
