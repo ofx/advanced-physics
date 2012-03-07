@@ -181,7 +181,11 @@ RigidBodyApplication::RigidBodyApplication( void ) : m_Theta( 0.0f ), m_Phi( 15.
 
 void RigidBodyApplication::Update( void )
 {
+#ifndef _WIN32
     float duration = (float)TimingData::get().LastFrameDuration * 0.001f;
+#else
+	float duration = (float)TimingData::get().lastFrameDuration * 0.001f;
+#endif
 
 	if( duration <= 0.0f ) 
     {

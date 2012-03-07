@@ -11,14 +11,17 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\mac\cyclone-bridge-demo\app.cpp" />
-    <ClCompile Include="..\mac\cyclone-bridge-demo\hangman.cpp" />
-    <ClCompile Include="..\mac\cyclone-bridge-demo\main.cpp" />
-    <ClCompile Include="..\mac\cyclone-bridge-demo\timing.cpp" />
+    <ClCompile Include="..\mac\cyclone-hangman-demo\app.cpp" />
+    <ClCompile Include="..\mac\cyclone-hangman-demo\hangman.cpp" />
+    <ClCompile Include="..\mac\cyclone-hangman-demo\main.cpp" />
+    <ClCompile Include="..\mac\cyclone-hangman-demo\timing.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\mac\cyclone-bridge-demo\app.h" />
-    <ClInclude Include="..\mac\cyclone-bridge-demo\timing.h" />
+    <ClInclude Include="..\mac\cyclone-hangman-demo\app.h" />
+    <ClInclude Include="..\mac\cyclone-hangman-demo\timing.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram1.cd" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectName>advanced_physics</ProjectName>
@@ -96,8 +99,8 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>cyclone.lib;opengl32.lib;glu32.lib;glut32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(OutDir)$(TargetName)</OutputFile>
-      <AdditionalLibraryDirectories>../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>

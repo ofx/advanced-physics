@@ -3,6 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cyclone", "cyclone_vc8.vcxproj", "{5E9A54F0-B92F-4E05-A31A-640DC1E99E4E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "advanced_physics", "advanced_physics.vcxproj", "{DA3884EB-DEC9-4790-93E0-80FFFD7AD4BA}"
+	ProjectSection(ProjectDependencies) = postProject
+		{5E9A54F0-B92F-4E05-A31A-640DC1E99E4E} = {5E9A54F0-B92F-4E05-A31A-640DC1E99E4E}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

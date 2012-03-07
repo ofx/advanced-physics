@@ -1,0 +1,17 @@
+
+*.exe
+*.ilk
+*.user
+*.opensdf
+*.suo
+*.ipch
+*.obj
+*.sbr
+*.tlog
+*.log
+*.idb
+*.pdb
+*.user
+build/advanced_physics.vcxproj.user
+*.sdf
+[Dd]ebug*/
