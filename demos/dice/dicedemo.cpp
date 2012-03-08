@@ -144,8 +144,6 @@ class DiceDemo : public RigidBodyApplication
 {
 private:
     Dice *m_Dice;
-
-    bool m_DebugDraw;
 public:
     DiceDemo( void );
     virtual ~DiceDemo( void );
