@@ -8,23 +8,33 @@
 #include "app.h"
 #include "squadric.h"
 
+#include <list>
 #include <stdio.h>
 #include <cassert>
 
 #define DICE_ROUNDING_FACTOR 0.75
 
+#define PICK_NAME_DICE_OFFSET 10
+#define PICK_BUFFER_SIZE      256
+#define PICK_TOLERANCE        10
+
 static bool s_DebugDraw = true;
+
+static int s_Dices = 0;
 
 Application* getApplication( void );
 
 class Dice : public cyclone::CollisionBox
 {
-private:
+protected:
     cyclone::CollisionSphere *m_RoundingSphere;
+
+    GLint m_Name;
 public:
     Dice( void )
     {
         this->body = new cyclone::RigidBody;
+        this->m_Name = s_Dices++;
 
         this->m_RoundingSphere = new cyclone::CollisionSphere();
         this->m_RoundingSphere->body = new cyclone::RigidBody();
@@ -82,6 +92,7 @@ public:
 
             glPushMatrix();
                 glScalef( halfSize.x, halfSize.y, halfSize.z );
+                glLoadName( this->m_Name + PICK_NAME_DICE_OFFSET );
                 sqSolidRoundCube( this->m_RoundingSphere->radius, 30, 30 );
             glPopMatrix();
         glPopMatrix();
@@ -143,7 +154,9 @@ public:
 class DiceDemo : public RigidBodyApplication
 {
 private:
-    Dice *m_Dice;
+    std::list<Dice*> m_Dices;
+
+    unsigned int m_PickBuffer[PICK_BUFFER_SIZE];
 public:
     DiceDemo( void );
     virtual ~DiceDemo( void );
@@ -161,6 +174,9 @@ public:
 
     // Resets the world
     virtual void Reset( void );
+
+    // Do GL picking
+    virtual void Select( int x, int y );
     
     // Display the world
     virtual void Display( void );
@@ -172,13 +188,20 @@ public:
 
 DiceDemo::DiceDemo( void )
 {
-    this->m_Dice = new SixSidedDice();
-    this->m_Dice->SetState( 0.0, 10.0, 20.0 );
+    Dice *d;
+
+    this->m_Dices.push_back( d = new SixSidedDice() );
+    d->SetState( 0.0, 10.0, 20.0 );
+}
+
+static bool deleteElm( Dice *d )
+{
+    delete d; return true;
 }
 
 DiceDemo::~DiceDemo()
 {
-    delete this->m_Dice;
+    this->m_Dices.remove_if( deleteElm );
 }
 
 void DiceDemo::Display( void )
@@ -206,7 +229,13 @@ void DiceDemo::Display( void )
     glColorMaterial( GL_FRONT_AND_BACK, GL_DIFFUSE );
     glEnable( GL_COLOR_MATERIAL );
     glColor3f( 1.0, 1.0, 1.0 );
-    this->m_Dice->render();
+    
+    std::list<Dice*>::const_iterator it;
+    for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
+    {
+        (*it)->render();
+    }
+
     glDisable( GL_COLOR_MATERIAL );
     glDisable( GL_LIGHTING );
     glDisable( GL_DEPTH_TEST );
@@ -234,9 +263,50 @@ void DiceDemo::InitGraphics( void )
     Application::InitGraphics();
 }
 
+void DiceDemo::Select( int x, int y )
+{
+    GLuint b[PICK_BUFFER_SIZE] = { 0 };
+    GLint h, v[4];
+    int id;
+
+    glSelectBuffer( PICK_BUFFER_SIZE, b );
+    
+    glGetIntegerv( GL_VIEWPORT, v );
+
+    glRenderMode( GL_SELECT );
+
+        glInitNames();
+        glPushName( 0 );
+
+        glMatrixMode( GL_PROJECTION );
+        glPushMatrix();
+            glLoadIdentity();
+
+            gluPickMatrix( x, v[3] - y, PICK_TOLERANCE, PICK_TOLERANCE, v );
+            gluPerspective( 60.0, (double) this->m_Width / (double) this->m_Height, 1.0, 500.0 );
+
+            glMatrixMode( GL_MODELVIEW );
+
+            glutSwapBuffers();
+
+            this->Display();
+
+            glMatrixMode( GL_PROJECTION );
+        glPopMatrix();
+
+    h = glRenderMode( GL_RENDER );
+
+    printf( "%i hits\n", h );
+
+    glMatrixMode( GL_MODELVIEW );
+}
+
 void DiceDemo::Mouse( int button, int state, int x, int y )
 {
-
+    if( (button == GLUT_LEFT_BUTTON) && (state == GLUT_DOWN) )
+    {
+        this->Select( x, y );
+    }
 }
 
 void DiceDemo::GenerateContacts( void )
@@ -251,12 +321,20 @@ void DiceDemo::GenerateContacts( void )
     this->m_CollisionData.restitution = (cyclone::real) 0.1;
     this->m_CollisionData.tolerance = (cyclone::real) 0.1;
 
-    this->m_Dice->DoCollisionTest( plane, &this->m_CollisionData );
+    std::list<Dice*>::const_iterator it;
+    for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
+    {
+        (*it)->DoCollisionTest( plane, &this->m_CollisionData );
+    }
 }
 
 void DiceDemo::UpdateObjects( cyclone::real duration )
 {
-    this->m_Dice->Update( duration );
+    std::list<Dice*>::const_iterator it;
+    for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
+    {
+        (*it)->Update( duration );
+    }
 }
 
 void DiceDemo::Reset( void )
