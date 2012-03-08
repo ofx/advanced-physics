@@ -222,6 +222,11 @@ namespace cyclone {
             return Vector3(x+v.x, y+v.y, z+v.z);
         }
 
+        Vector3 operator*(const real d) const
+        {
+            return Vector3(x * d, y * d, z * d);
+        }
+
         /** Subtracts the given vector from this. */
         void operator-=(const Vector3& v)
         {
@@ -244,12 +249,6 @@ namespace cyclone {
             x *= value;
             y *= value;
             z *= value;
-        }
-
-        /** Returns a copy of this vector scaled the given value. */
-        Vector3 operator*(const real value) const
-        {
-            return Vector3(x*value, y*value, z*value);
         }
 
         /**
@@ -411,6 +410,11 @@ namespace cyclone {
             return x > other.x && y > other.y && z > other.z;
         }
 
+        Vector3 operator/( const Vector3& v ) const
+        {
+            return Vector3( x / v.x, y / v.y, z / v.z);
+        }
+
         /**
          * Checks if this vector is component-by-component less than
          * the other.
@@ -449,6 +453,17 @@ namespace cyclone {
             x = -z;
         }
 
+        const static Vector3 Zero;
+
+        static Vector3 &Min( Vector3 &a, Vector3 &b )
+        {
+            return Vector3( a.x < b.x ? a.x : b.x, a.y < b.y ? a.y : b.y, a.z < b.z ? a.z : b.z );
+        }
+
+        static Vector3 &Max( Vector3 &a, Vector3 &b )
+        {
+            return Vector3( a.x > b.x ? a.x : b.x, a.y > b.y ? a.y : b.y, a.z > b.z ? a.z : b.z );
+        }
     };
 
     /**

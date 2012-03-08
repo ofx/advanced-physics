@@ -18,11 +18,43 @@
 #define PICK_BUFFER_SIZE      256
 #define PICK_TOLERANCE        10
 
-static bool s_DebugDraw = true;
+static bool s_DebugDraw = false;
+static bool s_Wireframe = true;
 
 static int s_Dices = 0;
 
 Application* getApplication( void );
+
+typedef struct
+{
+    cyclone::Vector3 o, d;
+} Ray;
+
+// Thanks Nils Dijk
+bool RayBoxIntersection( Ray ray, cyclone::CollisionBox box, cyclone::real &t )
+{
+    cyclone::Vector3 o = box.body->getPointInLocalSpace( ray.o );
+    cyclone::Vector3 d = box.body->getDirectionInLocalSpace( ray.d );
+
+    cyclone::Vector3 tmin = (cyclone::Vector3::Zero - box.halfSize - o) / d;
+    cyclone::Vector3 tmax = (box.halfSize - o) / d;
+    cyclone::Vector3 temp = tmin;
+
+    tmin = cyclone::Vector3::Min( temp, tmax );
+    tmax = cyclone::Vector3::Max( temp, tmax );
+
+    cyclone::real time = tmin.x;
+    time = time > tmin.y ? time : tmin.y;
+    time = time > tmin.z ? time : tmin.z;
+
+    cyclone::real last = tmax.x;
+    last = last < tmax.y ? last : tmax.y;
+    last = last < tmax.z ? last : tmax.z;
+
+    t = time;
+
+    return time <= last;
+}
 
 class Dice : public cyclone::CollisionBox
 {
@@ -45,6 +77,19 @@ public:
         delete this->body;
 
         delete this->RoundingSphere;
+    }
+
+    virtual void RenderShadow( void )
+    {
+        GLfloat mat[16];
+        body->getGLTransform( mat );
+
+        glPushMatrix();
+            glScalef( 1.0, 0, 1.0 );
+            glMultMatrixf( mat );
+            glScalef( halfSize.x * 2, halfSize.y * 2, halfSize.z * 2 );
+            glutSolidCube( 1.0f );
+        glPopMatrix();
     }
 
     virtual void render( void ) = 0;
@@ -159,42 +204,49 @@ public:
 
 	unsigned PyramidCollision( const cyclone::CollisionPrimitive &d, const cyclone::CollisionPlane &plane, cyclone::CollisionData *data )
 	{
-		if (data->contactsLeft <= 0) return 0;
+		if( data->contactsLeft <= 0 ) 
+        {
+            return 0;
+        }
 
 		float vData[6][3] = { 
-			{-1.0f, 0.0f, 1.0f},
-			{-1.0f, 0.0f, -1.0f},
-			{1.0f, 0.0f, -1.0f},
-			{1.0f, 0.0f, 1.0f},
-			{0.0f, 0.5f, 0.0f},
-			{0.0f, -0.5f, 0.0f}
+			{-1.0, 0.0, 1.0},
+			{-1.0, 0.0, -1.0},
+			{1.0, 0.0, -1.0},
+			{1.0, 0.0, 1.0},
+			{0.0, 0.5, 0.0},
+			{0.0, -0.5, 0.0}
 		};
 
 		cyclone::Contact* contact = data->contacts;
 		unsigned contactsUsed = 0;
-		for (unsigned i = 0; i < 6; i++) {
-			cyclone::Vector3 v(vData[i][0] * halfSize.x, vData[i][1] * halfSize.y, vData[i][2] * halfSize.z);
-			v = d.getTransform().transform(v);
+		for( unsigned i = 0 ; i < 6 ; ++i ) 
+        {
+			cyclone::Vector3 v( vData[i][0] * halfSize.x, vData[i][1] * halfSize.y, vData[i][2] * halfSize.z );
+			v = d.getTransform().transform( v );
 
 			float vDist = v * plane.direction;
 
 			if(vDist <= plane.offset)
 			{
 				contact->contactPoint = plane.direction;
-				contact->contactPoint *= (vDist-plane.offset);
+				contact->contactPoint *= (vDist - plane.offset);
 				contact->contactPoint = v;
 				contact->contactNormal = plane.direction;
 				contact->penetration = plane.offset - vDist;
 
-				contact->setBodyData(d.body, NULL, data->friction, data->restitution);
+				contact->setBodyData( d.body, NULL, data->friction, data->restitution );
 
-				contact++;
-				contactsUsed++;
-				if (contactsUsed == data->contactsLeft) return contactsUsed;
+				++contact;
+				++contactsUsed;
+				if( contactsUsed == data->contactsLeft ) 
+                {
+                    return contactsUsed;
+                }
 			}
 		}
 
-		data->addContacts(contactsUsed);
+		data->addContacts( contactsUsed );
 		return contactsUsed;
 	}
 };
@@ -309,6 +361,11 @@ class DiceDemo : public RigidBodyApplication
 private:
     std::list<Dice*> m_Dices;
 
+    bool m_IsDragging;
+    cyclone::PointJoint *m_DragJoint;
+    cyclone::Vector3 m_DragPoint;
+    Dice *m_DragDice;
+
     unsigned int m_PickBuffer[PICK_BUFFER_SIZE];
 public:
     DiceDemo( void );
@@ -337,17 +394,18 @@ public:
     virtual void Key( unsigned char key );
     // Handles mouse actions
     virtual void Mouse( int button, int state, int x, int y );
+    // Handles mouse drag
+    virtual void MouseDrag( int x, int y );
 };
 
 DiceDemo::DiceDemo( void )
 {
     Dice *d;
 
-    for( int i = 0 ; i < 10 ; ++i )
-    {
-        this->m_Dices.push_back( d = new EightSidedDice() );
-        d->SetState( sinf( i ) * i, 10.0 * i, 20.0 );
-    }
+    this->m_IsDragging = false;
+
+    this->m_Dices.push_back( d = new SixSidedDice() );
+    d->SetState( 0.0, 10.0, 0.0 );
 }
 
 static bool deleteElm( Dice *d )
@@ -366,17 +424,38 @@ void DiceDemo::Display( void )
     
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glLoadIdentity();
-    gluLookAt( -25.0, 8.0, 5.0,  0.0, 5.0, 22.0,  0.0, 1.0, 0.0 );
+    gluLookAt( -25.0, 8.0, 5.0, 0.0, 5.0, 0.0, 0.0, 1.0, 0.0 );
 
-    // Draw some scale lines
-    glColor3f( 0, 0, 1.0 );
-    glBegin( GL_LINES );
-        for( unsigned i = 0 ; i < 200 ; i += 10 )
+    // Draw some scale circles
+    glColor3f( 0.75, 0.75, 0.75 );
+    for( unsigned i = 1 ; i < 20 ; ++i )
+    {
+        glBegin( GL_LINE_LOOP );
+        for( unsigned j = 0 ; j < 32 ; ++j )
         {
-            glVertex3f( -5.0, 0.0, i );
-            glVertex3f( 5.0, 0.0, i );
+            float theta = 3.1415926 * j / 16.0;
+            glVertex3f( i * cosf( theta ), 0.0, i * sinf( theta ) );
         }
+        glEnd();
+    }
+    glBegin( GL_LINES);
+        glVertex3f( -20, 0 ,0 );
+        glVertex3f( 20, 0, 0 );
+        glVertex3f( 0, 0, -20 );
+        glVertex3f( 0, 0, 20 );
     glEnd();
+
+    // Render each shadow in turn
+    glEnable( GL_BLEND );
+        glColor4f( 0.0, 0.0, 0.0, 0.1 );
+        glDisable( GL_DEPTH_TEST );
+        glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+        std::list<Dice*>::const_iterator it;
+        for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
+        {
+            (*it)->RenderShadow();
+        }
+    glDisable( GL_BLEND );
 
     // Draw the dice
     glEnable( GL_DEPTH_TEST );
@@ -386,7 +465,11 @@ void DiceDemo::Display( void )
     glEnable( GL_COLOR_MATERIAL );
     glColor3f( 1.0, 1.0, 1.0 );
     
-    std::list<Dice*>::const_iterator it;
+    if( s_Wireframe )
+    {
+        glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+    }
+
     for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
     {
         (*it)->render();
@@ -395,6 +478,8 @@ void DiceDemo::Display( void )
     glDisable( GL_COLOR_MATERIAL );
     glDisable( GL_LIGHTING );
     glDisable( GL_DEPTH_TEST );
+
+    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 
     // Render some text
     glColor3f( 0.0, 0.0, 0.0 );
@@ -421,39 +506,42 @@ void DiceDemo::InitGraphics( void )
 
 void DiceDemo::Select( int x, int y )
 {
-    GLuint b[PICK_BUFFER_SIZE] = { 0 };
-    GLint h, v[4];
+    GLdouble model[16], proj[16];
+    GLint view[4];
 
-    glSelectBuffer( PICK_BUFFER_SIZE, b );
-    
-    glGetIntegerv( GL_VIEWPORT, v );
+    GLdouble oX, oY, oZ, eX, eY, eZ;
 
-    glRenderMode( GL_SELECT );
+    glGetDoublev( GL_MODELVIEW_MATRIX, model );
+    glGetDoublev( GL_PROJECTION_MATRIX, proj );
+    glGetIntegerv( GL_VIEWPORT, view );
 
-        glInitNames();
-        glPushName( 0 );
+    assert( gluUnProject( x, view[3] - y, 0.0, model, proj, view, &oX, &oY, &oZ ) != GLU_FALSE );
+    assert( gluUnProject( x, view[3] - y, 1.0, model, proj, view, &eX, &eY, &eZ ) != GLU_FALSE );
 
-        glMatrixMode( GL_PROJECTION );
-        glPushMatrix();
-            glLoadIdentity();
+    Ray r;
+    r.o = cyclone::Vector3( oX, oY, oZ );
+    r.d = cyclone::Vector3( eX, eY, eZ );
 
-            gluPickMatrix( x, v[3] - y, PICK_TOLERANCE, PICK_TOLERANCE, v );
-            gluPerspective( 60.0, (double) this->m_Width / (double) this->m_Height, 1.0, 500.0 );
+    cyclone::real t;
 
-            glMatrixMode( GL_MODELVIEW );
+    std::list<Dice*>::const_iterator it, ti;
+    for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
+    {
+        if( RayBoxIntersection( r, *(*it), t ) )
+        {
+            cyclone::Vector3 pos = r.o + r.d * t;
+            cyclone::Vector3 bpos = (*it)->body->getPosition();
 
-            glutSwapBuffers();
+            this->m_IsDragging = true;
 
-            this->Display();
+            this->m_DragDice = *it;
 
-            glMatrixMode( GL_PROJECTION );
-        glPopMatrix();
+            cyclone::PointJoint *p = new cyclone::PointJoint( (*it)->body, bpos - pos );
+            this->m_DragJoint = p;
 
-    h = glRenderMode( GL_RENDER );
-
-	printf( "%i hits\n", h );
-
-    glMatrixMode( GL_MODELVIEW );
+            break;
+        }
+    }
 }
 
 void DiceDemo::Mouse( int button, int state, int x, int y )
@@ -462,6 +550,22 @@ void DiceDemo::Mouse( int button, int state, int x, int y )
     {
         this->Select( x, y );
     }
+    else if( (button == GLUT_LEFT_BUTTON) && (state == GLUT_UP) )
+    {
+        this->m_IsDragging = false;
+        this->m_DragDice = 0;
+        delete this->m_DragJoint;
+    }
+}
+
+void DiceDemo::MouseDrag( int x, int y )
+{
+    this->m_DragPoint.x = x;
+    this->m_DragPoint.y = y;
+
+
+
+    //this->m_DragJoint->SetWorldPosition(  );
 }
 
 void DiceDemo::GenerateContacts( void )
@@ -475,6 +579,11 @@ void DiceDemo::GenerateContacts( void )
     this->m_CollisionData.friction = (cyclone::real) 0.9;
     this->m_CollisionData.restitution = (cyclone::real) 0.1;
     this->m_CollisionData.tolerance = (cyclone::real) 0.1;
+
+    if( this->m_IsDragging )
+    {
+        this->m_CollisionData.addContacts( this->m_DragJoint->addContact( this->m_CollisionData.contacts, this->m_CollisionData.contactsLeft ) );
+    }
 
     std::list<Dice*>::const_iterator it, ti;
     for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
@@ -511,6 +620,9 @@ void DiceDemo::Key( unsigned char key )
     {
         case 'D': case 'd':
             s_DebugDraw = !s_DebugDraw;
+            break;
+        case 'W': case 'w':
+            s_Wireframe = !s_Wireframe;
             break;
     }
 

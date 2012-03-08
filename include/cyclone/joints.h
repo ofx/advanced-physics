@@ -71,6 +71,25 @@ namespace cyclone {
         unsigned addContact(Contact *contact, unsigned limit) const;
     };
 
+    class PointJoint : public Joint
+    {
+    private:
+        Vector3 m_WorldPosition;
+    public:
+        PointJoint( RigidBody *a, Vector3 pos )
+        {
+            this->body[0] = a;
+            this->position[0] = pos;
+        }
+
+        void SetWorldPosition( Vector3 point )
+        {
+            this->m_WorldPosition = point;
+        }
+
+        unsigned addContact( Contact *contact, unsigned limit ) const;
+    };
+
 } // namespace cyclone
 
 #endif // CYCLONE_JOINTS_H

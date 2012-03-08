@@ -23,6 +23,7 @@ const Vector3 Vector3::OUT_OF_SCREEN = Vector3(0, 0, 1);
 const Vector3 Vector3::X = Vector3(0, 1, 0);
 const Vector3 Vector3::Y = Vector3(1, 0, 0);
 const Vector3 Vector3::Z = Vector3(0, 0, 1);
+const Vector3 Vector3::Zero = Vector3( 0, 0, 0 );
 
 /*
  * Definition of the sleep epsilon extern.

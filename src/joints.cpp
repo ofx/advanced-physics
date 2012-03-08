@@ -54,3 +54,31 @@ void Joint::set(RigidBody *a, const Vector3& a_pos,
 
     Joint::error = error;
 }
+
+unsigned PointJoint::addContact( Contact *contact, unsigned limit ) const
+{
+    // Calculate the position of each connection point in world coordinates
+    Vector3 a_pos_world = body[0]->getPointInWorldSpace(position[0]);
+    Vector3 b_pos_world = this->m_WorldPosition;
+
+    // Calculate the length of the joint
+    Vector3 a_to_b = b_pos_world - a_pos_world;
+    Vector3 normal = a_to_b;
+    normal.normalise();
+    real length = a_to_b.magnitude();
+
+    // Check if it is violated
+    if (real_abs(length) > error)
+    {
+        contact->body[0] = body[0];
+        contact->body[1] = 0;
+        contact->contactNormal = normal;
+        contact->contactPoint = this->m_WorldPosition;
+        contact->penetration = length-error;
+        contact->friction = 1.0f;
+        contact->restitution = 0;
+        return 1;
+    }
+
+    return 0;
+}
