@@ -4,12 +4,16 @@
 #include <gl/glut.h>
 #endif
 #include <cyclone/cyclone.h>
+
 #include "app.h"
+#include "squadric.h"
 
 #include <stdio.h>
 #include <cassert>
 
 #define DICE_ROUNDING_FACTOR 0.75
+
+static bool s_DebugDraw = true;
 
 Application* getApplication( void );
 
@@ -181,9 +185,19 @@ public:
 
         glPushMatrix();
             glMultMatrixf( mat );
-            glScalef( halfSize.x * 2, halfSize.y * 2, halfSize.z * 2 );
-            glutSolidCube( 1.0 );
-            glutWireSphere( this->m_RoundingSphere->radius, 30, 30 );
+            glPushMatrix();
+                if( s_DebugDraw )
+                {
+                    glScalef( halfSize.x * 2, halfSize.y * 2, halfSize.z * 2 );
+                    glutWireCube( 1.0 );
+                    glutWireSphere( this->m_RoundingSphere->radius, 30, 30 );
+                }
+            glPopMatrix();
+
+            glPushMatrix();
+                glScalef( halfSize.x, halfSize.y, halfSize.z );
+                sqSolidRoundCube( this->m_RoundingSphere->radius, 30, 30 );
+            glPopMatrix();
         glPopMatrix();
     }
 
@@ -366,6 +380,13 @@ void DiceDemo::Reset( void )
 
 void DiceDemo::Key( unsigned char key )
 {
+    switch( key )
+    {
+        case 'D': case 'd':
+            s_DebugDraw = !s_DebugDraw;
+            break;
+    }
+
     RigidBodyApplication::Key( key );
 }
 
