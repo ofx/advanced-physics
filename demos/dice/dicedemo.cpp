@@ -27,51 +27,50 @@ Application* getApplication( void );
 class Dice : public cyclone::CollisionBox
 {
 protected:
-    cyclone::CollisionSphere *m_RoundingSphere;
-
     GLint m_Name;
 public:
+    cyclone::CollisionSphere *RoundingSphere;
+
     Dice( void )
     {
         this->body = new cyclone::RigidBody;
         this->m_Name = s_Dices++;
 
-        this->m_RoundingSphere = new cyclone::CollisionSphere();
-        this->m_RoundingSphere->body = new cyclone::RigidBody();
+        this->RoundingSphere = new cyclone::CollisionSphere();
+        this->RoundingSphere->body = new cyclone::RigidBody();
     }
 
     virtual ~Dice( void )
     {
         delete this->body;
 
-        delete this->m_RoundingSphere;
+        delete this->RoundingSphere;
     }
 
     virtual void render( void ) = 0;
 
     virtual void Update( cyclone::real duration ) = 0;
-    virtual void DoCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData ) = 0;
+    virtual void DoPlaneCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData ) = 0;
+    virtual void DoDiceCollisionTest( Dice *d, cyclone::CollisionData *collisionData ) = 0;
     virtual void SetState( cyclone::real x, cyclone::real y, cyclone::real z ) = 0;
 };
 
 class EightSidedDice : public Dice
 {
-private:
-    cyclone::CollisionSphere *m_RoundingSphere;
 public:
     EightSidedDice( void )
     {
         this->body = new cyclone::RigidBody;
 
-        this->m_RoundingSphere = new cyclone::CollisionSphere;
-        this->m_RoundingSphere->body = new cyclone::RigidBody();
+        this->RoundingSphere = new cyclone::CollisionSphere;
+        this->RoundingSphere->body = new cyclone::RigidBody();
     }
 
     ~EightSidedDice( void )
     {
         delete this->body;
 
-        delete this->m_RoundingSphere;
+        delete this->RoundingSphere;
     }
 
     void render( void )
@@ -86,13 +85,14 @@ public:
                 {
                     glScalef( halfSize.x * 2, halfSize.y * 2, halfSize.z * 2 );
                     glutWireCube( 1.0 );
-                    glutWireSphere( this->m_RoundingSphere->radius, 30, 30 );
+                    glutWireSphere( this->RoundingSphere->radius, 30, 30 );
                 }
             glPopMatrix();
 
             glPushMatrix();
                 glScalef( halfSize.x, halfSize.y, halfSize.z );
-				sqSolidDoublePyramid( this->m_RoundingSphere->radius, 30, 20 );
+                glLoadName( this->m_Name + PICK_NAME_DICE_OFFSET );
+				sqSolidDoublePyramid( this->RoundingSphere->radius, 30, 20 );
             glPopMatrix();
         glPopMatrix();
     }
@@ -103,16 +103,21 @@ public:
         this->calculateInternals();
 
         // Update the rounding sphere position
-        this->m_RoundingSphere->body->setPosition( this->body->getPosition() );
+        this->RoundingSphere->body->setPosition( this->body->getPosition() );
     }
 
-    void DoCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData )
+    void DoPlaneCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData )
     {
         if( cyclone::IntersectionTests::sphereAndHalfSpace( *this->m_RoundingSphere, plane ) )
         {
 			pyramidCollision( *this, plane, collisionData );
             //cyclone::CollisionDetector::boxAndHalfSpace( *this, plane, collisionData );
         }
+    }
+
+    void DoDiceCollisionTest( Dice *d, cyclone::CollisionData *collisionData )
+    {
+
     }
 
     void SetState( cyclone::real x, cyclone::real y, cyclone::real z )
@@ -134,11 +139,11 @@ public:
             tensor.setBlockInertiaTensor( this->halfSize, mass );
             this->body->setInertiaTensor( tensor );
 
-            this->body->setLinearDamping( 0.95 );
-            this->body->setAngularDamping( 0.8 );
+            this->body->setDamping( 1.0, 1.0 );
             this->body->clearAccumulators();
             this->body->setAcceleration( 0, -10.0, 0 );
 
+            this->body->setCanSleep( true );
             this->body->setAwake();
 
             this->body->calculateDerivedData();
@@ -146,7 +151,7 @@ public:
 
         // Rounding sphere body
         {
-            this->m_RoundingSphere->radius = this->halfSize.x *= DICE_ROUNDING_FACTOR;
+            this->RoundingSphere->radius = this->halfSize.x * DICE_ROUNDING_FACTOR;
         }
     }
 
@@ -194,22 +199,22 @@ public:
 
 class SixSidedDice : public Dice
 {
-private:
-    cyclone::CollisionSphere *m_RoundingSphere;
 public:
+    cyclone::CollisionSphere *RoundingSphere;
+
     SixSidedDice( void )
     {
         this->body = new cyclone::RigidBody;
 
-        this->m_RoundingSphere = new cyclone::CollisionSphere();
-        this->m_RoundingSphere->body = new cyclone::RigidBody();
+        this->RoundingSphere = new cyclone::CollisionSphere();
+        this->RoundingSphere->body = new cyclone::RigidBody();
     }
 
     ~SixSidedDice( void )
     {
         delete this->body;
 
-        delete this->m_RoundingSphere;
+        delete this->RoundingSphere;
     }
 
     void render( void )
@@ -224,14 +229,14 @@ public:
                 {
                     glScalef( halfSize.x * 2, halfSize.y * 2, halfSize.z * 2 );
                     glutWireCube( 1.0 );
-                    glutWireSphere( this->m_RoundingSphere->radius, 30, 30 );
+                    glutWireSphere( this->RoundingSphere->radius, 30, 30 );
                 }
             glPopMatrix();
 
             glPushMatrix();
                 glScalef( halfSize.x, halfSize.y, halfSize.z );
                 glLoadName( this->m_Name + PICK_NAME_DICE_OFFSET );
-                sqSolidRoundCube( this->m_RoundingSphere->radius, 30, 30 );
+                sqSolidRoundCube( this->RoundingSphere->radius, 30, 30 );
             glPopMatrix();
         glPopMatrix();
     }
@@ -242,14 +247,22 @@ public:
         this->calculateInternals();
 
         // Update the rounding sphere position
-        this->m_RoundingSphere->body->setPosition( this->body->getPosition() );
+        this->RoundingSphere->body->setPosition( this->body->getPosition() );
     }
 
-    void DoCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData )
+    void DoPlaneCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData )
     {
-        if( cyclone::IntersectionTests::boxAndHalfSpace( *this, plane ) && cyclone::IntersectionTests::sphereAndHalfSpace( *this->m_RoundingSphere, plane ) )
+        if( cyclone::IntersectionTests::boxAndHalfSpace( *this, plane ) && cyclone::IntersectionTests::sphereAndHalfSpace( *this->RoundingSphere, plane ) )
         {
             cyclone::CollisionDetector::boxAndHalfSpace( *this, plane, collisionData );
+        }
+    }
+
+    void DoDiceCollisionTest( Dice *d, cyclone::CollisionData *collisionData )
+    {
+        if( cyclone::IntersectionTests::boxAndBox( *this, *d ) && cyclone::IntersectionTests::sphereAndSphere( *this->RoundingSphere, *d->RoundingSphere ) )
+        {
+            cyclone::CollisionDetector::boxAndBox( *this, *d, collisionData );
         }
     }
 
@@ -272,11 +285,11 @@ public:
             tensor.setBlockInertiaTensor( this->halfSize, mass );
             this->body->setInertiaTensor( tensor );
 
-            this->body->setLinearDamping( 0.95 );
-            this->body->setAngularDamping( 0.8 );
+            this->body->setDamping( 1.0, 1.0 );
             this->body->clearAccumulators();
             this->body->setAcceleration( 0, -10.0, 0 );
 
+            this->body->setCanSleep( true );
             this->body->setAwake();
 
             this->body->calculateDerivedData();
@@ -284,7 +297,7 @@ public:
 
         // Rounding sphere body
         {
-            this->m_RoundingSphere->radius = this->halfSize.x *= DICE_ROUNDING_FACTOR;
+            this->RoundingSphere->radius = this->halfSize.x * DICE_ROUNDING_FACTOR;
         }
     }
 };
@@ -328,8 +341,11 @@ DiceDemo::DiceDemo( void )
 {
     Dice *d, *e;
 
-    this->m_Dices.push_back( d = new EightSidedDice() );
-    d->SetState( 0.0, 10.0, 20.0 );
+    for( int i = 0 ; i < 20 ; ++i )
+    {
+        this->m_Dices.push_back( d = new SixSidedDice() );
+        d->SetState( sinf( i ) * i, 10.0 * i, 20.0 );
+    }
 }
 
 static bool deleteElm( Dice *d )
@@ -405,7 +421,6 @@ void DiceDemo::Select( int x, int y )
 {
     GLuint b[PICK_BUFFER_SIZE] = { 0 };
     GLint h, v[4];
-    int id;
 
     glSelectBuffer( PICK_BUFFER_SIZE, b );
     
@@ -434,8 +449,6 @@ void DiceDemo::Select( int x, int y )
 
     h = glRenderMode( GL_RENDER );
 
-    printf( "%i hits\n", h );
-
     glMatrixMode( GL_MODELVIEW );
 }
 
@@ -459,10 +472,18 @@ void DiceDemo::GenerateContacts( void )
     this->m_CollisionData.restitution = (cyclone::real) 0.1;
     this->m_CollisionData.tolerance = (cyclone::real) 0.1;
 
-    std::list<Dice*>::const_iterator it;
+    std::list<Dice*>::const_iterator it, ti;
     for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
     {
-        (*it)->DoCollisionTest( plane, &this->m_CollisionData );
+        (*it)->DoPlaneCollisionTest( plane, &this->m_CollisionData );
+
+        for( ti = this->m_Dices.begin() ; ti != this->m_Dices.end() ; ++ti )
+        {
+            if( (*ti) != (*it) )
+            {
+                (*it)->DoDiceCollisionTest( (*ti), &this->m_CollisionData );
+            }
+        }
     }
 }
 
