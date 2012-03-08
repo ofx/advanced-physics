@@ -40,6 +40,120 @@ public:
     virtual void SetState( cyclone::real x, cyclone::real y, cyclone::real z ) = 0;
 };
 
+class EightSidedDice : public Dice
+{
+private:
+    cyclone::CollisionSphere *m_RoundingSphere;
+	
+	static const unsigned int VERTEXCOUNT = 18;
+	static const unsigned int LINECOUNT = 24;
+
+public:
+    EightSidedDice( void )
+    {
+        this->body = new cyclone::RigidBody;
+
+        this->m_RoundingSphere = new cyclone::CollisionSphere();
+        this->m_RoundingSphere->body = new cyclone::RigidBody();
+    }
+
+    ~EightSidedDice( void )
+    {
+        delete this->body;
+        delete this->m_RoundingSphere;
+    }
+
+    void render( void )
+    {
+        GLfloat mat[16];
+        this->body->getGLTransform( mat );
+
+		float vData[] = { 
+			-1.0f, 0.0f, 1.0f,
+			-1.0f, 0.0f, -1.0f,
+			1.0f, 0.0f, -1.0f,
+			1.0f, 0.0f, 1.0f,
+			0.0f, 0.5f, 0.0f,
+			0.0f, -0.5f, 0.0f
+		};
+
+		int lData[] = {
+			0, 1, 1, 2, 2, 3, 3, 0,
+			0, 4, 1, 4, 2, 4, 3, 4,
+			0, 5, 1, 5, 2, 5, 3, 5
+		};
+
+		float size = 10.0f;
+
+        glPushMatrix();
+            glMultMatrixf( mat );
+            glScalef( halfSize.x * 2, halfSize.y * 2, halfSize.z * 2 );
+			glLineWidth(5.0f);
+			for(int i = 0; i < LINECOUNT - 1; ++i)
+			{
+				glBegin(GL_LINE);
+					glVertex3f(vData[lData[i]]*size, vData[lData[i]+1]*size, vData[lData[i]+2]*size);
+					glVertex3f(vData[lData[i+1]]*size, vData[lData[i+1]+1]*size, vData[lData[i+1]+2]*size);
+				glEnd();
+				++i;
+			}
+            //glutWireSphere( this->m_RoundingSphere->radius, 30, 30 );
+        glPopMatrix();
+    }
+
+    void Update( cyclone::real duration )
+    {
+        this->body->integrate( duration );
+        this->calculateInternals();
+
+        // Update the rounding sphere position
+        this->m_RoundingSphere->body->setPosition( this->body->getPosition() );
+    }
+
+    void DoCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData )
+    {
+        if( cyclone::IntersectionTests::boxAndHalfSpace( *this, plane ) && cyclone::IntersectionTests::sphereAndHalfSpace( *this->m_RoundingSphere, plane ) )
+        {
+            cyclone::CollisionDetector::boxAndHalfSpace( *this, plane, collisionData );
+        }
+    }
+
+    void SetState( cyclone::real x, cyclone::real y, cyclone::real z )
+    {
+        // Dice body
+        {
+            this->body->setPosition( x, y, z );
+            this->body->setOrientation( 1, 0, 0, 0 );
+            this->body->setVelocity( 0, 0, 0 );
+            this->body->setRotation( cyclone::Vector3( 0, 0, 0 ) );
+            this->halfSize = cyclone::Vector3( 1, 1, 1 );
+
+            assert( this->halfSize.x == this->halfSize.y && this->halfSize.y == this->halfSize.z );
+
+            cyclone::real mass = this->halfSize.x * this->halfSize.y * this->halfSize.z * 8.0f;
+            this->body->setMass( mass );
+
+            cyclone::Matrix3 tensor;
+            tensor.setBlockInertiaTensor( this->halfSize, mass );
+            this->body->setInertiaTensor( tensor );
+
+            this->body->setLinearDamping( 0.95 );
+            this->body->setAngularDamping( 0.8 );
+            this->body->clearAccumulators();
+            this->body->setAcceleration( 0, -10.0, 0 );
+
+            this->body->setAwake();
+
+            this->body->calculateDerivedData();
+        }
+
+        // Rounding sphere body
+        {
+            this->m_RoundingSphere->radius = this->halfSize.x *= DICE_ROUNDING_FACTOR;
+        }
+    }
+};
+
 class SixSidedDice : public Dice
 {
 private:
@@ -158,7 +272,7 @@ public:
 
 DiceDemo::DiceDemo( void )
 {
-    this->m_Dice = new SixSidedDice();
+    this->m_Dice = new EightSidedDice();
     this->m_Dice->SetState( 0.0, 10.0, 20.0 );
 }
 
