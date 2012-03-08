@@ -48,22 +48,19 @@ class EightSidedDice : public Dice
 {
 private:
     cyclone::CollisionSphere *m_RoundingSphere;
-	
-	static const unsigned int VERTEXCOUNT = 18;
-	static const unsigned int LINECOUNT = 24;
-
 public:
     EightSidedDice( void )
     {
         this->body = new cyclone::RigidBody;
 
-        this->m_RoundingSphere = new cyclone::CollisionSphere();
+        this->m_RoundingSphere = new cyclone::CollisionSphere;
         this->m_RoundingSphere->body = new cyclone::RigidBody();
     }
 
     ~EightSidedDice( void )
     {
         delete this->body;
+
         delete this->m_RoundingSphere;
     }
 
@@ -72,36 +69,21 @@ public:
         GLfloat mat[16];
         this->body->getGLTransform( mat );
 
-		float vData[] = { 
-			-1.0f, 0.0f, 1.0f,
-			-1.0f, 0.0f, -1.0f,
-			1.0f, 0.0f, -1.0f,
-			1.0f, 0.0f, 1.0f,
-			0.0f, 0.5f, 0.0f,
-			0.0f, -0.5f, 0.0f
-		};
-
-		int lData[] = {
-			0, 1, 1, 2, 2, 3, 3, 0,
-			0, 4, 1, 4, 2, 4, 3, 4,
-			0, 5, 1, 5, 2, 5, 3, 5
-		};
-
-		float size = 10.0f;
-
         glPushMatrix();
             glMultMatrixf( mat );
-            glScalef( halfSize.x * 2, halfSize.y * 2, halfSize.z * 2 );
-			glLineWidth(5.0f);
-			for(int i = 0; i < LINECOUNT - 1; ++i)
-			{
-				glBegin(GL_LINE);
-					glVertex3f(vData[lData[i]]*size, vData[lData[i]+1]*size, vData[lData[i]+2]*size);
-					glVertex3f(vData[lData[i+1]]*size, vData[lData[i+1]+1]*size, vData[lData[i+1]+2]*size);
-				glEnd();
-				++i;
-			}
-            //glutWireSphere( this->m_RoundingSphere->radius, 30, 30 );
+            glPushMatrix();
+                if( s_DebugDraw )
+                {
+                    glScalef( halfSize.x * 2, halfSize.y * 2, halfSize.z * 2 );
+                    glutWireCube( 1.0 );
+                    glutWireSphere( this->m_RoundingSphere->radius, 30, 30 );
+                }
+            glPopMatrix();
+
+            glPushMatrix();
+                glScalef( halfSize.x, halfSize.y, halfSize.z );
+				sqSolidDoublePyramid( this->m_RoundingSphere->radius, 30, 20 );
+            glPopMatrix();
         glPopMatrix();
     }
 

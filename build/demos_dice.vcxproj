@@ -12,12 +12,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\demos\dice\app.h" />
+    <ClInclude Include="..\demos\dice\squadric.h" />
     <ClInclude Include="..\demos\dice\timing.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\demos\dice\app.cpp" />
     <ClCompile Include="..\demos\dice\dicedemo.cpp" />
     <ClCompile Include="..\demos\dice\main.cpp" />
+    <ClCompile Include="..\demos\dice\squadric.cpp" />
     <ClCompile Include="..\demos\dice\timing.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
