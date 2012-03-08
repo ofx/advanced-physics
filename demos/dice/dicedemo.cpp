@@ -426,6 +426,15 @@ void DiceDemo::Display( void )
     glLoadIdentity();
     gluLookAt( -25.0, 8.0, 5.0, 0.0, 5.0, 0.0, 0.0, 1.0, 0.0 );
 
+	// Draw sphere at location of the mouse when it is down.
+	if( m_IsDragging )
+	{
+		glPushMatrix();
+			glTranslatef( m_DragPoint.x, m_DragPoint.y, m_DragPoint.z );
+			//glutSolidSphere( 0.5, 5, 5 );
+		glPopMatrix();
+	}
+
     // Draw some scale circles
     glColor3f( 0.75, 0.75, 0.75 );
     for( unsigned i = 1 ; i < 20 ; ++i )
@@ -524,7 +533,7 @@ void DiceDemo::Select( int x, int y )
 
     cyclone::real t;
 
-    std::list<Dice*>::const_iterator it, ti;
+    std::list<Dice*>::const_iterator it;
     for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
     {
         if( RayBoxIntersection( r, *(*it), t ) )
@@ -554,18 +563,47 @@ void DiceDemo::Mouse( int button, int state, int x, int y )
     {
         this->m_IsDragging = false;
         this->m_DragDice = 0;
-        delete this->m_DragJoint;
+
+		if( this->m_DragJoint != NULL )
+		{
+			delete this->m_DragJoint;
+			this->m_DragJoint = NULL;
+		}
     }
 }
 
 void DiceDemo::MouseDrag( int x, int y )
 {
-    this->m_DragPoint.x = x;
-    this->m_DragPoint.y = y;
+    /*GLint viewport[4];
+    GLdouble modelview[16];
+    GLdouble projection[16];
+    GLfloat winX, winY, winZ;
+    GLdouble posX, posY, posZ;
+ 
+    glGetDoublev( GL_MODELVIEW_MATRIX, modelview );
+    glGetDoublev( GL_PROJECTION_MATRIX, projection );
+    glGetIntegerv( GL_VIEWPORT, viewport );
+ 
+    winX = (float)x;
+    winY = (float)viewport[3] - (float)y;
+    glReadPixels( x, int(winY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &winZ );
+ 
+    gluUnProject( winX, winY, winZ, modelview, projection, viewport, &posX, &posY, &posZ);
+ 
+    m_DragPoint.x = posX;
+	m_DragPoint.y = posY;
+	m_DragPoint.z = posZ;
 
+	std::list<Dice*>::const_iterator it;
 
-
-    //this->m_DragJoint->SetWorldPosition(  );
+	for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
+    {
+		printf( "Dice position: %f - %f - %f\n", (*it)->body->getPosition().x, (*it)->body->getPosition().y, (*it)->body->getPosition().z ); 
+    }
+	printf( "DragPoint position: %f - %f - %f\n", m_DragPoint.x, m_DragPoint.y, m_DragPoint.z ); 
+	
+	
+	this->m_DragJoint->SetWorldPosition( m_DragPoint );*/
 }
 
 void DiceDemo::GenerateContacts( void )
