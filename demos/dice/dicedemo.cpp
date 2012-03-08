@@ -58,6 +58,8 @@ public:
 class EightSidedDice : public Dice
 {
 public:
+	cyclone::CollisionSphere *RoundingSphere;
+
     EightSidedDice( void )
     {
         this->body = new cyclone::RigidBody;
@@ -108,9 +110,9 @@ public:
 
     void DoPlaneCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData )
     {
-        if( cyclone::IntersectionTests::sphereAndHalfSpace( *this->m_RoundingSphere, plane ) )
+        if( cyclone::IntersectionTests::sphereAndHalfSpace( *this->RoundingSphere, plane ) )
         {
-			pyramidCollision( *this, plane, collisionData );
+			PyramidCollision( *this, plane, collisionData );
             //cyclone::CollisionDetector::boxAndHalfSpace( *this, plane, collisionData );
         }
     }
@@ -155,7 +157,7 @@ public:
         }
     }
 
-	unsigned pyramidCollision( const cyclone::CollisionPrimitive &d, const cyclone::CollisionPlane &plane, cyclone::CollisionData *data )
+	unsigned PyramidCollision( const cyclone::CollisionPrimitive &d, const cyclone::CollisionPlane &plane, cyclone::CollisionData *data )
 	{
 		if (data->contactsLeft <= 0) return 0;
 
@@ -339,11 +341,11 @@ public:
 
 DiceDemo::DiceDemo( void )
 {
-    Dice *d, *e;
+    Dice *d;
 
-    for( int i = 0 ; i < 20 ; ++i )
+    for( int i = 0 ; i < 10 ; ++i )
     {
-        this->m_Dices.push_back( d = new SixSidedDice() );
+        this->m_Dices.push_back( d = new EightSidedDice() );
         d->SetState( sinf( i ) * i, 10.0 * i, 20.0 );
     }
 }
