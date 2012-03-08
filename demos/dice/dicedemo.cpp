@@ -92,7 +92,7 @@ public:
             glPopMatrix();
 
             glPushMatrix();
-                glScalef( halfSize.x, halfSize.y, halfSize.z );
+                glScalef( halfSize.x * 2, halfSize.y * 2, halfSize.z * 2 );
                 glLoadName( this->m_Name + PICK_NAME_DICE_OFFSET );
 				sqSolidDoublePyramid( this->RoundingSphere->radius, 30, 20 );
             glPopMatrix();
@@ -173,7 +173,7 @@ public:
 		cyclone::Contact* contact = data->contacts;
 		unsigned contactsUsed = 0;
 		for (unsigned i = 0; i < 6; i++) {
-			cyclone::Vector3 v(vData[i][0], vData[i][1], vData[i][2]);
+			cyclone::Vector3 v(vData[i][0] * halfSize.x, vData[i][1] * halfSize.y, vData[i][2] * halfSize.z);
 			v = d.getTransform().transform(v);
 
 			float vDist = v * plane.direction;
@@ -450,6 +450,8 @@ void DiceDemo::Select( int x, int y )
         glPopMatrix();
 
     h = glRenderMode( GL_RENDER );
+
+	printf( "%i hits\n", h );
 
     glMatrixMode( GL_MODELVIEW );
 }
