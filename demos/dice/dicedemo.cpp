@@ -108,9 +108,10 @@ public:
 
     void DoCollisionTest( cyclone::CollisionPlane plane, cyclone::CollisionData *collisionData )
     {
-        if( cyclone::IntersectionTests::boxAndHalfSpace( *this, plane ) && cyclone::IntersectionTests::sphereAndHalfSpace( *this->m_RoundingSphere, plane ) )
+        if( cyclone::IntersectionTests::sphereAndHalfSpace( *this->m_RoundingSphere, plane ) )
         {
-            cyclone::CollisionDetector::boxAndHalfSpace( *this, plane, collisionData );
+			pyramidCollision( *this, plane, collisionData );
+            //cyclone::CollisionDetector::boxAndHalfSpace( *this, plane, collisionData );
         }
     }
 
@@ -121,7 +122,7 @@ public:
             this->body->setPosition( x, y, z );
             this->body->setOrientation( 1, 0, 0, 0 );
             this->body->setVelocity( 0, 0, 0 );
-            this->body->setRotation( cyclone::Vector3( 0, 0, 0 ) );
+            this->body->setRotation( cyclone::Vector3( 0.3f, 0.3f, 0.3f ) );
             this->halfSize = cyclone::Vector3( 1, 1, 1 );
 
             assert( this->halfSize.x == this->halfSize.y && this->halfSize.y == this->halfSize.z );
@@ -148,6 +149,47 @@ public:
             this->m_RoundingSphere->radius = this->halfSize.x *= DICE_ROUNDING_FACTOR;
         }
     }
+
+	unsigned pyramidCollision( const cyclone::CollisionPrimitive &d, const cyclone::CollisionPlane &plane, cyclone::CollisionData *data )
+	{
+		if (data->contactsLeft <= 0) return 0;
+
+		float vData[6][3] = { 
+			{-1.0f, 0.0f, 1.0f},
+			{-1.0f, 0.0f, -1.0f},
+			{1.0f, 0.0f, -1.0f},
+			{1.0f, 0.0f, 1.0f},
+			{0.0f, 0.5f, 0.0f},
+			{0.0f, -0.5f, 0.0f}
+		};
+
+		cyclone::Contact* contact = data->contacts;
+		unsigned contactsUsed = 0;
+		for (unsigned i = 0; i < 6; i++) {
+			cyclone::Vector3 v(vData[i][0], vData[i][1], vData[i][2]);
+			v = d.getTransform().transform(v);
+
+			float vDist = v * plane.direction;
+
+			if(vDist <= plane.offset)
+			{
+				contact->contactPoint = plane.direction;
+				contact->contactPoint *= (vDist-plane.offset);
+				contact->contactPoint = v;
+				contact->contactNormal = plane.direction;
+				contact->penetration = plane.offset - vDist;
+
+				contact->setBodyData(d.body, NULL, data->friction, data->restitution);
+
+				contact++;
+				contactsUsed++;
+				if (contactsUsed == data->contactsLeft) return contactsUsed;
+			}
+		}
+
+		data->addContacts(contactsUsed);
+		return contactsUsed;
+	}
 };
 
 class SixSidedDice : public Dice
@@ -284,9 +326,9 @@ public:
 
 DiceDemo::DiceDemo( void )
 {
-    Dice *d;
+    Dice *d, *e;
 
-    this->m_Dices.push_back( d = new SixSidedDice() );
+    this->m_Dices.push_back( d = new EightSidedDice() );
     d->SetState( 0.0, 10.0, 20.0 );
 }
 
