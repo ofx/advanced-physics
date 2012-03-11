@@ -403,9 +403,11 @@ DiceDemo::DiceDemo( void )
     Dice *d;
 
     this->m_IsDragging = false;
-
-    this->m_Dices.push_back( d = new SixSidedDice() );
-    d->SetState( 0.0, 10.0, 0.0 );
+	for( int i = 0; i < 5; ++i )
+	{
+		this->m_Dices.push_back( d = new SixSidedDice() );
+		d->SetState( i, i*2, i );
+	}
 }
 
 static bool deleteElm( Dice *d )
@@ -425,15 +427,6 @@ void DiceDemo::Display( void )
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glLoadIdentity();
     gluLookAt( -25.0, 8.0, 5.0, 0.0, 5.0, 0.0, 0.0, 1.0, 0.0 );
-
-	// Draw sphere at location of the mouse when it is down.
-	if( m_IsDragging )
-	{
-		glPushMatrix();
-			glTranslatef( m_DragPoint.x, m_DragPoint.y, m_DragPoint.z );
-			//glutSolidSphere( 0.5, 5, 5 );
-		glPopMatrix();
-	}
 
     // Draw some scale circles
     glColor3f( 0.75, 0.75, 0.75 );
@@ -545,7 +538,7 @@ void DiceDemo::Select( int x, int y )
 
             this->m_DragDice = *it;
 
-            cyclone::PointJoint *p = new cyclone::PointJoint( (*it)->body, bpos - pos );
+			cyclone::PointJoint *p = new cyclone::PointJoint( (*it)->body, (*it)->body->getPointInWorldSpace( bpos ) - (*it)->body->getPointInWorldSpace( pos ) );
             this->m_DragJoint = p;
 
             break;
@@ -574,41 +567,38 @@ void DiceDemo::Mouse( int button, int state, int x, int y )
 
 void DiceDemo::MouseDrag( int x, int y )
 {
-	if( m_IsDragging && m_DragDice != NULL && m_DragJoint != NULL)
-	{
-		GLint viewport[4];
-		GLdouble modelview[16];
-		GLdouble projection[16];
-		GLfloat winX, winY, winZ;
-		GLdouble posX, posY, posZ;
- 
-		glGetDoublev( GL_MODELVIEW_MATRIX, modelview );
-		glGetDoublev( GL_PROJECTION_MATRIX, projection );
-		glGetIntegerv( GL_VIEWPORT, viewport );
- 
-		winX = (float)x;
-		winY = (float)viewport[3] - (float)y;
-		glReadPixels( x, int(winY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &winZ );
- 
-		gluUnProject( winX, winY, winZ, modelview, projection, viewport, &posX, &posY, &posZ );
+    GLdouble model[16], proj[16];
+    GLint view[4];
 
-		std::list<Dice*>::const_iterator it;
-	
-		m_DragPoint.x = posX;
-		m_DragPoint.y = posY*-1;
-		m_DragPoint.z = posZ;
+    GLdouble oX, oY, oZ, eX, eY, eZ;
 
-		printf( "WinX,Y,Z: %f - %f - %f\n", winX, winY, winZ ); 
-		printf( "posX,Y,Z: %f - %f - %f\n", posX, posY, posZ ); 
-		printf( "DragPoint position: %f - %f - %f\n", m_DragPoint.x, m_DragPoint.y, m_DragPoint.z ); 
-		printf( "Dice position: %f - %f - %f\n", m_DragDice->body->getPosition().x, m_DragDice->body->getPosition().y, m_DragDice->body->getPosition().z );
+    glGetDoublev( GL_MODELVIEW_MATRIX, model );
+    glGetDoublev( GL_PROJECTION_MATRIX, proj );
+    glGetIntegerv( GL_VIEWPORT, view );
 
-		m_DragPoint = m_DragDice->body->getPointInWorldSpace( m_DragPoint );
+    assert( gluUnProject( x, view[3] - y, 0.0, model, proj, view, &oX, &oY, &oZ ) != GLU_FALSE );
+    assert( gluUnProject( x, view[3] - y, 1.0, model, proj, view, &eX, &eY, &eZ ) != GLU_FALSE );
 
-		printf( "DragPoint in worldSpace: %f - %f - %f\n", m_DragPoint.x, m_DragPoint.y, m_DragPoint.z ); 
+    Ray r;
+    r.o = cyclone::Vector3( oX, oY, oZ );
+    r.d = cyclone::Vector3( eX, eY, eZ );
 
-		this->m_DragJoint->SetWorldPosition( m_DragPoint );
-	}
+    cyclone::real t;
+
+    std::list<Dice*>::const_iterator it;
+    for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
+    {
+        if( RayBoxIntersection( r, *(*it), t ) )
+        {
+            cyclone::Vector3 pos = r.o + r.d * t;
+            cyclone::Vector3 bpos = (*it)->body->getPosition();
+
+
+			this->m_DragJoint->SetWorldPosition( (*it)->body->getPointInWorldSpace( bpos ) - m_DragDice->body->getPointInWorldSpace( pos ) );
+
+            break;
+        }
+    }
 }
 
 void DiceDemo::GenerateContacts( void )
