@@ -365,6 +365,7 @@ private:
     cyclone::PointJoint *m_DragJoint;
     cyclone::Vector3 m_DragPoint;
     Dice *m_DragDice;
+	cyclone::real *m_DragTime;
 
     unsigned int m_PickBuffer[PICK_BUFFER_SIZE];
 public:
@@ -405,6 +406,7 @@ DiceDemo::DiceDemo( void )
     this->m_IsDragging = false;
 	this->m_DragJoint = NULL;
 	this->m_DragDice = NULL;
+	this->m_DragTime = new cyclone::real;
 
 	for( int i = 0; i < 5; ++i )
 	{
@@ -528,14 +530,12 @@ void DiceDemo::Select( int x, int y )
 	r.d = cyclone::Vector3( eX - oX, eY - oY, eZ - oZ );
 	r.d.normalise();
 
-	cyclone::real t;
-
     std::list<Dice*>::const_iterator it;
     for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
     {
-        if( RayBoxIntersection( r, *(*it), t ) )
+        if( RayBoxIntersection( r, *(*it), *this->m_DragTime ) )
         {
-            cyclone::Vector3 pos = r.o + r.d * t;
+            cyclone::Vector3 pos = r.o + r.d * (*this->m_DragTime);
             cyclone::Vector3 bpos = (*it)->body->getPosition();
 
 			this->m_IsDragging = true;
@@ -596,14 +596,9 @@ void DiceDemo::MouseDrag( int x, int y )
 
 		std::list<Dice*>::const_iterator it;
 
-		if( RayBoxIntersection( r, *m_DragDice, t ) )
-		{
-			cyclone::Vector3 pos = r.o + r.d * t;
-			cyclone::Vector3 bpos = m_DragDice->body->getPosition();
-
-			this->m_DragJoint->SetWorldPosition( pos );
-
-		}	
+		cyclone::Vector3 pos = r.o + r.d * (*this->m_DragTime);
+		cyclone::Vector3 bpos = m_DragDice->body->getPosition();
+		this->m_DragJoint->SetWorldPosition( pos );
 }
 
 void DiceDemo::GenerateContacts( void )
@@ -620,13 +615,7 @@ void DiceDemo::GenerateContacts( void )
 
     if( m_DragJoint != NULL )
     {
-#ifdef _DEBUG
-		printf("Position before: %9.9f %9.9f %9.9f\n", m_DragJoint->position[0].x, m_DragJoint->position[0].y, m_DragJoint->position[0].z);
-#endif //_DEBUG
         this->m_CollisionData.addContacts( this->m_DragJoint->addContact( this->m_CollisionData.contacts, this->m_CollisionData.contactsLeft ) );
-#ifdef _DEBUG
-		printf("Position after: %9.9f %9.9f %9.9f\n", m_DragJoint->position[0].x, m_DragJoint->position[0].y, m_DragJoint->position[0].z);
-#endif //_DEBUG
     }
 
     std::list<Dice*>::const_iterator it, ti;
