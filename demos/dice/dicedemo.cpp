@@ -365,7 +365,7 @@ private:
     cyclone::PointJoint *m_DragJoint;
     cyclone::Vector3 m_DragPoint;
     Dice *m_DragDice;
-	cyclone::real *m_DragTime;
+	cyclone::real m_DragTime;
 
     unsigned int m_PickBuffer[PICK_BUFFER_SIZE];
 public:
@@ -406,12 +406,16 @@ DiceDemo::DiceDemo( void )
     this->m_IsDragging = false;
 	this->m_DragJoint = NULL;
 	this->m_DragDice = NULL;
-	this->m_DragTime = new cyclone::real;
 
-	for( int i = 0; i < 5; ++i )
+	for( int i = 0; i < 2; ++i )
 	{
 		this->m_Dices.push_back( d = new SixSidedDice() );
 		d->SetState( i, i*2, i );
+	}
+	for( int j = 0; j < 2; ++j )
+	{
+		this->m_Dices.push_back( d = new EightSidedDice() );
+		d->SetState( j, j*2, j );
 	}
 }
 
@@ -533,16 +537,14 @@ void DiceDemo::Select( int x, int y )
     std::list<Dice*>::const_iterator it;
     for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
     {
-        if( RayBoxIntersection( r, *(*it), *this->m_DragTime ) )
+        if( RayBoxIntersection( r, *(*it), this->m_DragTime ) )
         {
-            cyclone::Vector3 pos = r.o + r.d * (*this->m_DragTime);
+            cyclone::Vector3 pos = r.o + r.d * this->m_DragTime;
             cyclone::Vector3 bpos = (*it)->body->getPosition();
 
 			this->m_IsDragging = true;
 
             this->m_DragDice = *it;
-			cyclone::Vector3 worldBpos = (*it)->body->getPointInWorldSpace( bpos );
-			cyclone::Vector3 worldPos = (*it)->body->getPointInWorldSpace( pos );
 			cyclone::PointJoint *p = new cyclone::PointJoint( (*it)->body, bpos - pos );
             this->m_DragJoint = p;
 
@@ -572,9 +574,8 @@ void DiceDemo::Mouse( int button, int state, int x, int y )
 
 void DiceDemo::MouseDrag( int x, int y )
 {
-#ifdef _DEBUG
-		printf( "Dragging mouse...\n" );
-#endif //_DEBUG
+	if( m_DragDice )
+	{
 		GLdouble model[16], proj[16];
 		GLint view[4];
 
@@ -592,13 +593,9 @@ void DiceDemo::MouseDrag( int x, int y )
 		r.d = cyclone::Vector3( eX - oX, eY - oY, eZ - oZ );
 		r.d.normalise();
 
-		cyclone::real t;
-
-		std::list<Dice*>::const_iterator it;
-
-		cyclone::Vector3 pos = r.o + r.d * (*this->m_DragTime);
-		cyclone::Vector3 bpos = m_DragDice->body->getPosition();
+		cyclone::Vector3 pos = r.o + r.d * this->m_DragTime;
 		this->m_DragJoint->SetWorldPosition( pos );
+	}
 }
 
 void DiceDemo::GenerateContacts( void )
@@ -613,7 +610,7 @@ void DiceDemo::GenerateContacts( void )
     this->m_CollisionData.restitution = (cyclone::real) 0.1;
     this->m_CollisionData.tolerance = (cyclone::real) 0.1;
 
-    if( m_DragJoint != NULL )
+    if( m_DragDice != NULL )
     {
         this->m_CollisionData.addContacts( this->m_DragJoint->addContact( this->m_CollisionData.contacts, this->m_CollisionData.contactsLeft ) );
     }
