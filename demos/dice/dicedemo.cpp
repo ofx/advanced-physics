@@ -521,6 +521,7 @@ void DiceDemo::Select( int x, int y )
     GLint view[4];
 
     GLdouble oX, oY, oZ, eX, eY, eZ;
+	oX = oY = oZ = eX = eY = eZ = 0;
 
     glGetDoublev( GL_MODELVIEW_MATRIX, model );
     glGetDoublev( GL_PROJECTION_MATRIX, proj );
@@ -580,6 +581,7 @@ void DiceDemo::MouseDrag( int x, int y )
 		GLint view[4];
 
 		GLdouble oX, oY, oZ, eX, eY, eZ;
+		oX = oY = oZ = eX = eY = eZ = 0;
 
 		glGetDoublev( GL_MODELVIEW_MATRIX, model );
 		glGetDoublev( GL_PROJECTION_MATRIX, proj );
