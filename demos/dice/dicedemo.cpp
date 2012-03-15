@@ -403,6 +403,9 @@ DiceDemo::DiceDemo( void )
     Dice *d;
 
     this->m_IsDragging = false;
+	this->m_DragJoint = NULL;
+	this->m_DragDice = NULL;
+
 	for( int i = 0; i < 5; ++i )
 	{
 		this->m_Dices.push_back( d = new SixSidedDice() );
@@ -522,9 +525,10 @@ void DiceDemo::Select( int x, int y )
 
     Ray r;
     r.o = cyclone::Vector3( oX, oY, oZ );
-    r.d = cyclone::Vector3( eX, eY, eZ );
+	r.d = cyclone::Vector3( eX - oX, eY - oY, eZ - oZ );
+	r.d.normalise();
 
-    cyclone::real t;
+	cyclone::real t;
 
     std::list<Dice*>::const_iterator it;
     for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
@@ -534,11 +538,12 @@ void DiceDemo::Select( int x, int y )
             cyclone::Vector3 pos = r.o + r.d * t;
             cyclone::Vector3 bpos = (*it)->body->getPosition();
 
-            this->m_IsDragging = true;
+			this->m_IsDragging = true;
 
             this->m_DragDice = *it;
-
-			cyclone::PointJoint *p = new cyclone::PointJoint( (*it)->body, (*it)->body->getPointInWorldSpace( bpos ) - (*it)->body->getPointInWorldSpace( pos ) );
+			cyclone::Vector3 worldBpos = (*it)->body->getPointInWorldSpace( bpos );
+			cyclone::Vector3 worldPos = (*it)->body->getPointInWorldSpace( pos );
+			cyclone::PointJoint *p = new cyclone::PointJoint( (*it)->body, bpos - pos );
             this->m_DragJoint = p;
 
             break;
@@ -551,7 +556,7 @@ void DiceDemo::Mouse( int button, int state, int x, int y )
     if( (button == GLUT_LEFT_BUTTON) && (state == GLUT_DOWN) )
     {
         this->Select( x, y );
-    }
+	}
     else if( (button == GLUT_LEFT_BUTTON) && (state == GLUT_UP) )
     {
         this->m_IsDragging = false;
@@ -567,38 +572,38 @@ void DiceDemo::Mouse( int button, int state, int x, int y )
 
 void DiceDemo::MouseDrag( int x, int y )
 {
-    GLdouble model[16], proj[16];
-    GLint view[4];
+#ifdef _DEBUG
+		printf( "Dragging mouse...\n" );
+#endif //_DEBUG
+		GLdouble model[16], proj[16];
+		GLint view[4];
 
-    GLdouble oX, oY, oZ, eX, eY, eZ;
+		GLdouble oX, oY, oZ, eX, eY, eZ;
 
-    glGetDoublev( GL_MODELVIEW_MATRIX, model );
-    glGetDoublev( GL_PROJECTION_MATRIX, proj );
-    glGetIntegerv( GL_VIEWPORT, view );
+		glGetDoublev( GL_MODELVIEW_MATRIX, model );
+		glGetDoublev( GL_PROJECTION_MATRIX, proj );
+		glGetIntegerv( GL_VIEWPORT, view );
 
-    assert( gluUnProject( x, view[3] - y, 0.0, model, proj, view, &oX, &oY, &oZ ) != GLU_FALSE );
-    assert( gluUnProject( x, view[3] - y, 1.0, model, proj, view, &eX, &eY, &eZ ) != GLU_FALSE );
+		assert( gluUnProject( x, view[3] - y, 0.0, model, proj, view, &oX, &oY, &oZ ) != GLU_FALSE );
+		assert( gluUnProject( x, view[3] - y, 1.0, model, proj, view, &eX, &eY, &eZ ) != GLU_FALSE );
 
-    Ray r;
-    r.o = cyclone::Vector3( oX, oY, oZ );
-    r.d = cyclone::Vector3( eX, eY, eZ );
+		Ray r;
+		r.o = cyclone::Vector3( oX, oY, oZ );
+		r.d = cyclone::Vector3( eX - oX, eY - oY, eZ - oZ );
+		r.d.normalise();
 
-    cyclone::real t;
+		cyclone::real t;
 
-    std::list<Dice*>::const_iterator it;
-    for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
-    {
-        if( RayBoxIntersection( r, *(*it), t ) )
-        {
-            cyclone::Vector3 pos = r.o + r.d * t;
-            cyclone::Vector3 bpos = (*it)->body->getPosition();
+		std::list<Dice*>::const_iterator it;
 
+		if( RayBoxIntersection( r, *m_DragDice, t ) )
+		{
+			cyclone::Vector3 pos = r.o + r.d * t;
+			cyclone::Vector3 bpos = m_DragDice->body->getPosition();
 
-			this->m_DragJoint->SetWorldPosition( (*it)->body->getPointInWorldSpace( bpos ) - m_DragDice->body->getPointInWorldSpace( pos ) );
+			this->m_DragJoint->SetWorldPosition( pos );
 
-            break;
-        }
-    }
+		}	
 }
 
 void DiceDemo::GenerateContacts( void )
@@ -613,9 +618,15 @@ void DiceDemo::GenerateContacts( void )
     this->m_CollisionData.restitution = (cyclone::real) 0.1;
     this->m_CollisionData.tolerance = (cyclone::real) 0.1;
 
-    if( this->m_IsDragging )
+    if( m_DragJoint != NULL )
     {
+#ifdef _DEBUG
+		printf("Position before: %9.9f %9.9f %9.9f\n", m_DragJoint->position[0].x, m_DragJoint->position[0].y, m_DragJoint->position[0].z);
+#endif //_DEBUG
         this->m_CollisionData.addContacts( this->m_DragJoint->addContact( this->m_CollisionData.contacts, this->m_CollisionData.contactsLeft ) );
+#ifdef _DEBUG
+		printf("Position after: %9.9f %9.9f %9.9f\n", m_DragJoint->position[0].x, m_DragJoint->position[0].y, m_DragJoint->position[0].z);
+#endif //_DEBUG
     }
 
     std::list<Dice*>::const_iterator it, ti;

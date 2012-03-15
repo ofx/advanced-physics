@@ -80,6 +80,7 @@ namespace cyclone {
         {
             this->body[0] = a;
             this->position[0] = pos;
+			PointJoint::error = 0.0f;
         }
 
         void SetWorldPosition( Vector3 point )

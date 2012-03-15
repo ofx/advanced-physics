@@ -71,7 +71,7 @@ unsigned PointJoint::addContact( Contact *contact, unsigned limit ) const
     if (real_abs(length) > error)
     {
         contact->body[0] = body[0];
-        contact->body[1] = 0;
+		contact->body[1] = 0;
         contact->contactNormal = normal;
         contact->contactPoint = this->m_WorldPosition;
         contact->penetration = length-error;
