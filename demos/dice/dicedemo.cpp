@@ -190,7 +190,7 @@ public:
             this->body->clearAccumulators();
             this->body->setAcceleration( 0, -10.0, 0 );
 
-            this->body->setCanSleep( true );
+            this->body->setCanSleep( false );
             this->body->setAwake();
 
             this->body->calculateDerivedData();
@@ -350,7 +350,7 @@ public:
             this->body->clearAccumulators();
             this->body->setAcceleration( 0, -10.0, 0 );
 
-            this->body->setCanSleep( true );
+            this->body->setCanSleep( false );
             this->body->setAwake();
 
             this->body->calculateDerivedData();
@@ -372,6 +372,7 @@ private:
     cyclone::PointJoint *m_DragJoint;
     cyclone::Vector3 m_DragPoint;
     Dice *m_DragDice;
+	cyclone::CollisionBox m_Walls[4];
 	cyclone::real m_DragTime;
 
     unsigned int m_PickBuffer[PICK_BUFFER_SIZE];
@@ -424,6 +425,44 @@ DiceDemo::DiceDemo( void )
 		this->m_Dices.push_back( d = new EightSidedDice() );
 		d->SetState( j, j*2, j );
 	}
+
+	// Create a few boxes to create an inner box.
+	// [0] left [1] right [2] front [3]back
+	cyclone::Vector3 wallV( 1, 3, 30 );
+	cyclone::Vector3 wallH( 30, 3, 1 );
+
+	m_Walls[0].halfSize = wallV;
+	m_Walls[1].halfSize = wallV;
+	m_Walls[2].halfSize = wallH;
+	m_Walls[3].halfSize = wallH;
+
+	for( unsigned int i = 0; i < 4; ++i )
+	{
+		m_Walls[i].body = new cyclone::RigidBody();
+	}
+
+	m_Walls[0].body->setPosition( m_Walls[0].body->getPointInWorldSpace( cyclone::Vector3( -15, 1.5, 0) ) );
+	m_Walls[1].body->setPosition( m_Walls[1].body->getPointInWorldSpace( cyclone::Vector3( 15, 1.5, 0) ) );
+	m_Walls[2].body->setPosition( m_Walls[2].body->getPointInWorldSpace( cyclone::Vector3( 0, 1.5, 15) ) );
+	m_Walls[3].body->setPosition( m_Walls[3].body->getPointInWorldSpace( cyclone::Vector3( 0, 1.5, -15) ) );
+
+	for( unsigned int i = 0 ; i < 4 ; ++i )
+	{
+		m_Walls[i].body->setMass( 100.0f );
+		
+		cyclone::Matrix3 tensor;
+        tensor.setBlockInertiaTensor( m_Walls[i].halfSize, 100.0f );
+        m_Walls[i].body->setInertiaTensor( tensor );
+
+        m_Walls[i].body->setDamping( 1.0, 1.0 );
+        m_Walls[i].body->clearAccumulators();
+     
+		m_Walls[i].body->setAcceleration( 0, 0, 0 );
+		m_Walls[i].body->setCanSleep( true );
+        m_Walls[i].body->setAwake();
+
+		m_Walls[i].body->calculateDerivedData();
+	}
 }
 
 static bool deleteElm( Dice *d )
@@ -464,13 +503,27 @@ void DiceDemo::Display( void )
     glEnd();
 
 	// Draw a box
-	glColor4f( 1.0f, 0.0f, 0.0f, 0.2f );
-	glBegin( GL_QUADS );
-		glVertex3f( -10, -0.1f, 10 );
-		glVertex3f( 10, -0.1f, 10 );
-		glVertex3f( 10, -0.1f, -10 );
-		glVertex3f( -10, -0.1f, -10);
-	glEnd();
+	glColor4f( 1.0f, 0.0f, 0.0f, 0.02f );
+	for(unsigned int i = 0; i < 4; ++i)
+	{
+	    GLfloat mat[16];
+        m_Walls[i].body->getGLTransform( mat );
+        glPushMatrix();
+            glMultMatrixf( mat );
+            glPushMatrix();
+                if( s_DebugDraw )
+                {
+					glScalef( m_Walls[i].halfSize.x * 2, m_Walls[i].halfSize.y * 2, m_Walls[i].halfSize.z * 2 );
+                    glutWireCube( 1.0 );
+                }
+            glPopMatrix();
+
+			glPushMatrix();
+                glScalef( m_Walls[i].halfSize.x, m_Walls[i].halfSize.y, m_Walls[i].halfSize.z );
+				glutSolidCube(1.0f);
+            glPopMatrix();
+        glPopMatrix();
+	}
 
     // Render each shadow in turn
     glEnable( GL_BLEND );
@@ -622,16 +675,7 @@ void DiceDemo::GenerateContacts( void )
     cyclone::CollisionPlane plane;
     plane.direction = cyclone::Vector3( 0, 1, 0 );
     plane.offset = 0;
-
-	// Create a box
-	cyclone::CollisionPlane leftPlane, rightPlane, frontPlane, backPlane;
-	leftPlane.direction =	cyclone::Vector3( 1, 0, 0 );
-	rightPlane.direction =	cyclone::Vector3( -1, 0, 0 );
-	frontPlane.direction =	cyclone::Vector3( 0, 0, 1 );
-	backPlane.direction =	cyclone::Vector3( 0, 0, -1 );
 	
-	leftPlane.offset = rightPlane.offset = frontPlane.offset = backPlane.offset = -10;
-
     this->m_CollisionData.reset( RigidBodyApplication::s_MaxContacts );
     this->m_CollisionData.friction = (cyclone::real) 0.9;
     this->m_CollisionData.restitution = (cyclone::real) 0.1;
@@ -645,12 +689,16 @@ void DiceDemo::GenerateContacts( void )
     std::list<Dice*>::const_iterator it, ti;
     for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
     {
-        (*it)->DoPlaneCollisionTest( leftPlane, &this->m_CollisionData );
-		(*it)->DoPlaneCollisionTest( rightPlane, &this->m_CollisionData );
-		(*it)->DoPlaneCollisionTest( backPlane, &this->m_CollisionData );
-		(*it)->DoPlaneCollisionTest( frontPlane, &this->m_CollisionData );
-		
 		(*it)->DoPlaneCollisionTest( plane, &this->m_CollisionData );
+
+		// Do collision detection for walls
+		for( unsigned int i = 0; i < 4; ++i )
+		{
+			if( cyclone::IntersectionTests::boxAndBox( *(*it), m_Walls[i] ) )
+			{
+				cyclone::CollisionDetector::boxAndBox( *(*it), m_Walls[i], &this->m_CollisionData );
+			}
+		}
 
         for( ti = this->m_Dices.begin() ; ti != this->m_Dices.end() ; ++ti )
         {
