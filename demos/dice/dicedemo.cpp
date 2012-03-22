@@ -209,20 +209,27 @@ public:
             return 0;
         }
 
-		float vData[6][3] = { 
-			{-1.0, 0.0, 1.0},
-			{-1.0, 0.0, -1.0},
-			{1.0, 0.0, -1.0},
-			{1.0, 0.0, 1.0},
-			{0.0, 0.5, 0.0},
-			{0.0, -0.5, 0.0}
+		float vData[12][3] = {
+			{0.000001, 0.000000, -1.000000},
+			{-0.999999, 0.000001, 0.000000},
+			{0.000001, -0.000000, 1.000000},
+			{1.000001, -0.000001, -0.000000},
+			{-0.000001, -1.000000, 0.000000},
+			{0.000001, 0.000000, 0.000000},
+
+			{0.000000, 0.000000, -1.000000},
+			{1.000000, 0.000000, 0.000000},
+			{-0.000000, 0.000000, 1.000000},
+			{-1.000000, 0.000000, -0.000000},
+			{0.000000, 1.000000, 0.000000},
+			{0.000000, 0.000000, 0.000000},
 		};
 
 		cyclone::Contact* contact = data->contacts;
 		unsigned contactsUsed = 0;
-		for( unsigned i = 0 ; i < 6 ; ++i ) 
+		for( unsigned i = 0 ; i < 12 ; ++i ) 
         {
-			cyclone::Vector3 v( vData[i][0] * halfSize.x, vData[i][1] * halfSize.y, vData[i][2] * halfSize.z );
+			cyclone::Vector3 v( vData[i][0] * halfSize.x*2, vData[i][1] * halfSize.y*2, vData[i][2] * halfSize.z*2 );
 			v = d.getTransform().transform( v );
 
 			float vDist = v * plane.direction;
@@ -456,6 +463,15 @@ void DiceDemo::Display( void )
         glVertex3f( 0, 0, 20 );
     glEnd();
 
+	// Draw a box
+	glColor4f( 1.0f, 0.0f, 0.0f, 0.2f );
+	glBegin( GL_QUADS );
+		glVertex3f( -10, -0.1f, 10 );
+		glVertex3f( 10, -0.1f, 10 );
+		glVertex3f( 10, -0.1f, -10 );
+		glVertex3f( -10, -0.1f, -10);
+	glEnd();
+
     // Render each shadow in turn
     glEnable( GL_BLEND );
         glColor4f( 0.0, 0.0, 0.0, 0.1 );
@@ -607,6 +623,15 @@ void DiceDemo::GenerateContacts( void )
     plane.direction = cyclone::Vector3( 0, 1, 0 );
     plane.offset = 0;
 
+	// Create a box
+	cyclone::CollisionPlane leftPlane, rightPlane, frontPlane, backPlane;
+	leftPlane.direction =	cyclone::Vector3( 1, 0, 0 );
+	rightPlane.direction =	cyclone::Vector3( -1, 0, 0 );
+	frontPlane.direction =	cyclone::Vector3( 0, 0, 1 );
+	backPlane.direction =	cyclone::Vector3( 0, 0, -1 );
+	
+	leftPlane.offset = rightPlane.offset = frontPlane.offset = backPlane.offset = -10;
+
     this->m_CollisionData.reset( RigidBodyApplication::s_MaxContacts );
     this->m_CollisionData.friction = (cyclone::real) 0.9;
     this->m_CollisionData.restitution = (cyclone::real) 0.1;
@@ -620,7 +645,12 @@ void DiceDemo::GenerateContacts( void )
     std::list<Dice*>::const_iterator it, ti;
     for( it = this->m_Dices.begin() ; it != this->m_Dices.end() ; ++it )
     {
-        (*it)->DoPlaneCollisionTest( plane, &this->m_CollisionData );
+        (*it)->DoPlaneCollisionTest( leftPlane, &this->m_CollisionData );
+		(*it)->DoPlaneCollisionTest( rightPlane, &this->m_CollisionData );
+		(*it)->DoPlaneCollisionTest( backPlane, &this->m_CollisionData );
+		(*it)->DoPlaneCollisionTest( frontPlane, &this->m_CollisionData );
+		
+		(*it)->DoPlaneCollisionTest( plane, &this->m_CollisionData );
 
         for( ti = this->m_Dices.begin() ; ti != this->m_Dices.end() ; ++ti )
         {
